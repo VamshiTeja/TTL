@@ -26,6 +26,8 @@ y = np.concatenate((mnist[0][1],mnist[1][1]),axis=0)
 X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=42, stratify=y)
 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42, stratify=y_train)
 mnist_dict = {"X_train": X_train, "y_train":y_train, "X_train":X_train, "y_train":y_train, "X_val":X_val, "y_val":y_val}
+if not os.path.exists("./datasets"):
+	os.makedirs("./datasets")
 with open("./datasets/mnist.pickle","wb") as f:
 	pickle.dump(mnist_dict, f)
 print(X_train.shape, X_test.shape, X_val.shape)

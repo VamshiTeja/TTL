@@ -277,10 +277,9 @@ class ConvVAE:
             print("loading MI Network: ",ckpt.model_checkpoint_path)
             self.mi_saver.restore(self.sess, ckpt.model_checkpoint_path)
 
-        elif(load_transfer==False):
+        elif(load_transfer==True):
             ckpt = tf.train.get_checkpoint_state(checkpoint_path)
-            # print ("???????????????????????????????????????????")
-            # print("loading encoder from source task: ",ckpt.model_checkpoint_path)
+            print("loading encoder from source task: ",ckpt.model_checkpoint_path)
             self.encoder_saver.restore(self.sess, ckpt.model_checkpoint_path)
         else:
             ckpt = tf.train.get_checkpoint_state(checkpoint_path)

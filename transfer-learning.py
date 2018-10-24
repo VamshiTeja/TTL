@@ -32,9 +32,9 @@ def main():
     parser.add_argument('--batch_size', type=int, default=64, help='batch size')
     parser.add_argument('--z_dim', type=int, default=10, help='latent variable dimensionality')
     parser.add_argument('--learning_rate', type=float, default=0.0002, help='learning rate')
-    parser.add_argument('--dataset', type=str, default='mnist', help='mnist|svhn|cifar10')
+    parser.add_argument('--dataset', type=str, default='svhn', help='mnist|svhn|cifar10')
     parser.add_argument('--restore',type=int, default=0, help='restore')
-    parser.add_argument('--transfer', type=bool, default=False,help="")
+    parser.add_argument('--transfer', type=bool, default=1,help="")
     parser.add_argument('--source_task', type=str, default="autoencoding")
     parser.add_argument('--target_task', type=str, default="classification")
     parser.add_argument('--mode', type=str, default="train",help="train|test|mi") # test or train or edge-detection
