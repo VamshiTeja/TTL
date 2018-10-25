@@ -309,3 +309,27 @@ def make_noisy(image):
   #image = add_noise(image, noise_typ="poisson")
   #image = add_noise(image, noise_typ="s&p")
   return image
+
+def vec2str(a):
+    s = ""
+    for i in range(a.shape[0]):
+      s = s + str(a[i])
+    return s
+
+
+def str2vec(s):
+  l = []
+  for i in s.split(","):
+    l.append(int(i))
+  return l
+
+def kl_div(mu1, cov1, mu2, cov2):
+    trace_term = np.sum(cov1 / cov2, axis=1)
+    term1 = 0
+    term2 = 0
+    for i in range(cov2.shape[1]):
+      term1 += np.log(cov2[0][i] + 1e-8)
+      term2 += np.log(cov1[0][i] + 1e-8)
+    det_term = term1 - term2  # np.log(cov2)-np.log(np.prod(cov1,axis=1)+)
+    mean_term = np.sum(np.square(mu2 - mu1) / cov2, axis=1)
+    return np.mean(0.5 * (trace_term + det_term + mean_term))

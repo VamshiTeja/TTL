@@ -27,102 +27,89 @@ def sample_minibatch(dataset, batch_size=256):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epochs', type=int, default=30, help='training epochs')
-    parser.add_argument('--display_step', type=int, default=20, help='display step')
-    parser.add_argument('--checkpoint_step', type=int, default=5, help='checkpoint step')
-    parser.add_argument('--task', type=str, default="autoencoding", help='autoencoding|classification')
-    parser.add_argument('--batch_size', type=int, default=64, help='batch size')
-    parser.add_argument('--z_dim', type=int, default=10, help='latent variable dimensionality')
-    parser.add_argument('--learning_rate', type=float, default=0.0002, help='learning rate')
-    parser.add_argument('--dataset', type=str, default='svhn', help='mnist|svhn|cifar10')
-    parser.add_argument('--restore', type=int, default=0, help='restore')
-    parser.add_argument('--transfer', type=bool, default=True, help="")
-    parser.add_argument('--source_task', type=str, default="autoencoding")
-    parser.add_argument('--target_task', type=str, default="classification")
-    parser.add_argument('--mode', type=str, default="train", help="train|test|mi")  # test or train or edge-detection
-    parser.add_argument('--remove_dims', type=str, default='')
-    parser.add_argument('--gpu', type=str, default='s0')
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--num_epochs', type=int, default=30, help='training epochs')
+    # parser.add_argument('--display_step', type=int, default=20, help='display step')
+    # parser.add_argument('--checkpoint_step', type=int, default=5, help='checkpoint step')
+    # parser.add_argument('--task', type=str, default="autoencoding", help='autoencoding|classification')
+    # parser.add_argument('--batch_size', type=int, default=64, help='batch size')
+    # parser.add_argument('--z_dim', type=int, default=10, help='latent variable dimensionality')
+    # parser.add_argument('--learning_rate', type=float, default=0.0002, help='learning rate')
+    # parser.add_argument('--dataset', type=str, default='svhn', help='mnist|svhn|cifar10')
+    # parser.add_argument('--restore', type=int, default=0, help='restore')
+    # parser.add_argument('--transfer', type=bool, default=True, help="")
+    # parser.add_argument('--source_task', type=str, default="autoencoding")
+    # parser.add_argument('--target_task', type=str, default="classification")
+    # parser.add_argument('--mode', type=str, default="train", help="train|test|mi")  # test or train or edge-detection
+    # parser.add_argument('--remove_dims', type=str, default='')
+    # parser.add_argument('--gpu', type=str, default='s0')
 
     parser.add_argument("--cfg", dest='cfg_file', default='./config/transfer-learning.yml', type=str, help="An optional config file"
                                                                                               " to be loaded")
     args = parser.parse_args()
 
-
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
+
     # set gpu
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    os.environ['CUDA_VISIBLE_DEVICES'] = cfg.gpu
 
-    if (args.mode == "train"):
-        return train(args)
-    elif (args.mode == "test"):
-        return test(args)
-    elif (args.mode == "mi"):
-        return MI(args)
-
-
-def vec2str(a):
-    s = ""
-    for i in range(a.shape[0]):
-        s = s + str(a[i])
-    return s
+    if (cfg.mode == "train"):
+        return train(cfg)
+    elif (cfg.mode == "test"):
+        return test(cfg)
+    elif (cfg.mode == "mi"):
+        return MI(cfg)
 
 
-def str2vec(s):
-    l = []
-    for i in s.split(","):
-        l.append(int(i))
-    return l
-
-
-def train(args):
-    learning_rate = args.learning_rate
-    batch_size = args.batch_size
-    training_epochs = args.training_epochs
-    display_step = args.display_step
-    checkpoint_step = args.checkpoint_step  # save training results every check point step
-    z_dim = args.z_dim  # number of latent variables.
+def train(cfg):
+    learning_rate = cfg.learning_rate
+    batch_size = cfg.batch_size
+    num_epochs = cfg.num_epochs
+    display_step = cfg.display_step
+    checkpoint_step = cfg.checkpoint_step  # save training results every check point step
+    z_dim = cfg.z_dim  # number of latent variables.
 
     # set the selector matrix
     A = np.zeros(shape=(z_dim, z_dim)).astype(np.float32)
     count = 0
-    if (args.remove_dims != ''):
+    if (cfg.remove_dims != ''):
         for i in range(z_dim):
-            if i in str2vec(args.remove_dims):
+            if i in str2vec(cfg.remove_dims):
                 continue
             else:
                 A[count][i] = 1
                 count += 1
 
-    transfer_dims = args.remove_dims
+    transfer_dims = cfg.remove_dims
     if (transfer_dims == ''):
-        A = np.identity(args.z_dim, dtype=np.float32)
+        A = np.identity(cfg.z_dim, dtype=np.float32)
         transfer_dims = "full"
         print("Full latent from encoder to decoder")
-    if args.transfer == False:
+
+    if cfg.transfer == False:
         print ("no tranfer")
-        print ("currently training the task : " + args.task)
-        if args.task == "autoencoding":
-            if args.dataset == "mnist":
+        print ("currently training the task : " + cfg.task)
+        if cfg.task == "autoencoding":
+            if cfg.dataset == "mnist":
                 dataset_x = mnist_dict["X_train"]
-            elif args.dataset == "cifar10":
+            elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_train"]
-            elif args.dataset == "svhn":
+            elif cfg.dataset == "svhn":
                 dataset_x = svhn_dict["X_train"]
 
             dataset_x = dataset_x.astype(np.float32) / 255.0
             dataset_y = dataset_x
             num_channels_x = dataset_x[0].shape[-1]
             num_channels_y = num_channels_x
-        elif args.task == "classification":
-            if args.dataset == "mnist":
+        elif cfg.task == "classification":
+            if cfg.dataset == "mnist":
                 dataset_x = mnist_dict["X_train"]
                 dataset_y = mnist_dict["y_train"]
-            elif args.dataset == "cifar10":
+            elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_train"]
                 dataset_y = cifar_dict["y_train"]
-            elif args.dataset == "svhn":
+            elif cfg.dataset == "svhn":
                 dataset_x = svhn_dict["X_train"]
                 dataset_y = svhn_dict["y_train"]
             dataset_x = dataset_x.astype(np.float32) / 255.0
@@ -131,30 +118,30 @@ def train(args):
             dataset_y = a
             num_channels_x = dataset_x[0].shape[-1]
             num_channels_y = None
-        target_checkpoint_dir = "./checkpoints/source_tasks/" + args.dataset + "/" + str(args.z_dim) + "/" + args.task
-        out_dir = "./out/source_tasks/" + args.dataset + "/" + str(args.z_dim) + "/" + args.task
+        target_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
+        out_dir = "./out/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
         if not os.path.exists(target_checkpoint_dir):
             os.makedirs(target_checkpoint_dir)
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
-        target_checkpoint_path = target_checkpoint_dir + "/" + args.task + "_" + str(args.z_dim) + '_model.ckpt'
+        target_checkpoint_path = target_checkpoint_dir + "/" + cfg.task + "_" + str(cfg.z_dim) + '_model.ckpt'
         if not (len(os.listdir(target_checkpoint_dir))):
             ckpt = None
         else:
             ckpt = tf.train.latest_checkpoint(target_checkpoint_dir)
         # print (target_checkpoint_path)
     else:
-        print ("source task is " + args.source_task)
-        print ("target task is " + args.target_task)
-        print("Removed dimensions: %s" % args.remove_dims)
-        if args.source_task == "autoencoding":
-            if args.dataset == "mnist":
+        print ("source task is " + cfg.source_task)
+        print ("target task is " + cfg.target_task)
+        print("Removed dimensions: %s" % cfg.remove_dims)
+        if cfg.source_task == "autoencoding":
+            if cfg.dataset == "mnist":
                 dataset_x = mnist_dict["X_val"]
                 dataset_y = mnist_dict["y_val"]
-            elif args.dataset == "cifar10":
+            elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_val"]
                 dataset_y = cifar_dict["y_val"]
-            elif args.dataset == "svhn":
+            elif cfg.dataset == "svhn":
                 dataset_x = svhn_dict["X_val"]
                 dataset_y = svhn_dict["y_val"]
             a = np.zeros((dataset_x.shape[0], 10))
@@ -163,29 +150,29 @@ def train(args):
             dataset_y = a
             num_channels_x = dataset_x[0].shape[-1]
             num_channels_y = None
-        elif args.source_task == "classification":
-            if args.dataset == "mnist":
+        elif cfg.source_task == "classification":
+            if cfg.dataset == "mnist":
                 dataset_x = mnist_dict["X_val"]
-            elif args.dataset == "cifar10":
+            elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_val"]
-            elif args.dataset == "svhn":
+            elif cfg.dataset == "svhn":
                 dataset_x = svhn_dict["X_val"]
             dataset_x = dataset_x.astype(np.float32) / 255.0
             dataset_y = dataset_x
             num_channels_x = dataset_x[0].shape[-1]
             num_channels_y = num_channels_x
-        target_checkpoint_dir = "./checkpoints/transfers/" + args.dataset + "/" + str(
-            args.z_dim) + "/" + args.source_task + "->" + args.target_task + "/" + transfer_dims
-        source_checkpoint_dir = "./checkpoints/source_tasks/" + args.dataset + "/" + str(
-            args.z_dim) + "/" + args.source_task
-        out_dir = "./out/transfers/" + args.dataset + "/" + str(
-            args.z_dim) + "/" + args.source_task + "->" + args.target_task + str(args.z_dim) + "_" + transfer_dims
-        target_checkpoint_path = target_checkpoint_dir + "/" + args.source_task + "->" + args.target_task + str(
-            args.z_dim) + "_" + transfer_dims + '.ckpt'
+        target_checkpoint_dir = "./checkpoints/transfers/" + cfg.dataset + "/" + str(
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims
+        source_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(
+            cfg.z_dim) + "/" + cfg.source_task
+        out_dir = "./out/transfers/" + cfg.dataset + "/" + str(
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + str(cfg.z_dim) + "_" + transfer_dims
+        target_checkpoint_path = target_checkpoint_dir + "/" + cfg.source_task + "->" + cfg.target_task + str(
+            cfg.z_dim) + "_" + transfer_dims + '.ckpt'
         ckpt = tf.train.get_checkpoint_state(source_checkpoint_dir)
-        target_decoder_checkpoint_dir =   "./checkpoints/transfers/" + args.dataset + "/" + str(
-            args.z_dim) + "/" + args.target_task + "_decoder"
-        target_decoder_checkpoint_path = target_decoder_checkpoint_dir+ "/"+args.target_task+"_decoder_"+str(args.z_dim) + '.ckpt'
+        target_decoder_checkpoint_dir =   "./checkpoints/transfers/" + cfg.dataset + "/" + str(
+            cfg.z_dim) + "/" + cfg.target_task + "_decoder"
+        target_decoder_checkpoint_path = target_decoder_checkpoint_dir + "/" + cfg.target_task + "_decoder_" + str(cfg.z_dim) + '.ckpt'
         target_decoder_ckpt = tf.train.get_checkpoint_state(target_decoder_checkpoint_dir)
 
     imsize = dataset_x[0].shape[1]
@@ -193,19 +180,22 @@ def train(args):
         os.makedirs(target_decoder_checkpoint_dir)
     if not os.path.exists(target_checkpoint_dir):
         os.makedirs(target_checkpoint_dir)
-    if (args.transfer):
-        vae = ConvVAE(args=args, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize,
-                      isTrain_Enc=False)
+
+    #Freeze encoder while transfer
+    if(cfg.transfer):
+        isTrain_Enc = False
     else:
-        vae = ConvVAE(args=args, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize,
-                      isTrain_Enc=True)
+        isTrain_Enc = True
+
+    vae = ConvVAE(args=cfg, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize,
+                      isTrain_Enc=isTrain_Enc)
 
     train_set = (dataset_x, dataset_y)
     n_samples = train_set[0].shape[0]
-    print ("x shape ", dataset_x.shape)
+    print ("X shape ", dataset_x.shape)
     print ("y shape ", dataset_y.shape)
     start_epoch = 0
-    if (args.transfer == True):
+    if (cfg.transfer == True):
         restore = True
         if ckpt:
             vae.load_model(source_checkpoint_dir, load_transfer=True)
@@ -218,7 +208,7 @@ def train(args):
             print("Saved Target Task static decoder to %s"%target_decoder_checkpoint_path)
 
     else:
-        restore = args.transfer
+        restore = cfg.transfer
         if ckpt:
             vae.load_model(target_checkpoint_dir, load_transfer=False)
             i = -1
@@ -233,7 +223,7 @@ def train(args):
     if ckpt == False and restore == True:
         print ("no saved model to load")
 
-    for epoch in range(training_epochs):
+    for epoch in range(num_epochs):
         # break
         if (start_epoch):
             if epoch <= start_epoch:
@@ -246,7 +236,7 @@ def train(args):
         disc_loss = 0
         total_batch = int(n_samples / batch_size)
         for i in range(total_batch):
-            indices = sample_minibatch(train_set[0], args.batch_size)
+            indices = sample_minibatch(train_set[0], cfg.batch_size)
             x = train_set[0][indices]
             y = train_set[1][indices]
             vae_tr_loss, recons_cost, kl, disc = vae.partial_fit(x, y)
@@ -276,7 +266,7 @@ def train(args):
             os.makedirs(out_dir)
         recons = vae.reconstruct(x)
         if num_channels_y:
-            if (args.batch_size >= 256):
+            if (cfg.batch_size >= 256):
                 save_images(y[0:256], image_manifold_size(256), out_dir + '/epoch_{}_actual.png'.format(str(epoch + 1)))
                 save_images(recons[0:256], image_manifold_size(256),
                             out_dir + '/epoch_{}_recons.png'.format(str(epoch + 1)))
@@ -288,18 +278,18 @@ def train(args):
             with open(out_dir + "/classification.txt", "a") as text_file:
                 # text_file.write("Removed dims :"+args.remove_dims+"\n")
                 if epoch == 0:
-                    if args.transfer:
-                        text_file.write("source task :" + args.task + "\n")
-                        text_file.write("target task :" + args.task + "\n")
+                    if cfg.transfer:
+                        text_file.write("source task :" + cfg.task + "\n")
+                        text_file.write("target task :" + cfg.task + "\n")
                     else:
-                        text_file.write("source task :" + args.source_task + "\n")
-                        text_file.write("target task :" + args.target_task + "\n")
+                        text_file.write("source task :" + cfg.source_task + "\n")
+                        text_file.write("target task :" + cfg.target_task + "\n")
                 text_file.write("accuracy of epoch " + str(epoch) + " = " + str(reconstr_loss) + "\n")
                 text_file.close()
-                if args.transfer == False:
-                    print ("current task : " + args.task)
+                if cfg.transfer == False:
+                    print ("current task : " + cfg.task)
                 else:
-                    print ("source task :" + args.source_task + " target task: " + args.target_task)
+                    print ("source task :" + cfg.source_task + " target task: " + cfg.target_task)
         print (target_checkpoint_path)
         vae.save_model(target_checkpoint_path, epoch)
         print ("model saved")
@@ -307,135 +297,199 @@ def train(args):
     # return vae
 
 
-def test(args):
-    learning_rate = args.learning_rate
-    batch_size = args.batch_size
-    training_epochs = args.training_epochs
-    display_step = args.display_step
-    checkpoint_step = args.checkpoint_step  # save training results every check point step
-    z_dim = args.z_dim  # number of latent variables.
+def test(cfg):
+
+    z_dim = cfg.z_dim  # number of latent variables.
 
     # set the selector matrix
     A = np.zeros(shape=(z_dim, z_dim)).astype(np.float32)
     count = 0
-    if (args.remove_dims != ''):
+    if (cfg.remove_dims != ''):
         for i in range(z_dim):
-            if i in str2vec(args.remove_dims):
+            if i in str2vec(cfg.remove_dims):
                 continue
             else:
                 A[count][i] = 1
                 count += 1
 
-    if (args.remove_dims == ''):
-        A = np.identity(args.z_dim, dtype=np.float32)
-        print("Full Transfer")
-
-    transfer_dims = args.remove_dims
+    transfer_dims = cfg.remove_dims
     if (transfer_dims == ''):
+        A = np.identity(cfg.z_dim, dtype=np.float32)
         transfer_dims = "full"
+        print("Full Latent from encoder to decoder")
 
-    if args.dataset == "mnist":
-        dataset_x = np.reshape(mnist.train.images, [-1, 28, 28, 1])
-        dataset_y = np.reshape(mnist.train.images, [-1, 28, 28, 1])
-    elif args.dataset == "taskonomy":
-        dataset_x = np.load("./preprocess/autoencoding.npy")
-        if (args.transfer == True):
-            if args.target_task == "denoising":
-                dataset_x = np.load("./preprocess/denoising.npy")
-                dataset_y = np.load("./preprocess/autoencoding.npy")
-            else:
-                dataset_y = np.load("./preprocess/" + args.target_task + ".npy")
+    if cfg.transfer == False:
+        print ("No tranfer")
+        print ("Currently Training the task : " + cfg.task)
+        if cfg.task == "Autoencoding":
+            if cfg.dataset == "mnist":
+                dataset_x = mnist_dict["X_test"]
+            elif cfg.dataset == "cifar10":
+                dataset_x = cifar_dict["X_test"]
+            elif cfg.dataset == "svhn":
+                dataset_x = svhn_dict["X_test"]
+
+            dataset_x = dataset_x.astype(np.float32) / 255.0
+            dataset_y = dataset_x
+            num_channels_x = dataset_x[0].shape[-1]
+            num_channels_y = num_channels_x
+        elif cfg.task == "classification":
+            if cfg.dataset == "mnist":
+                dataset_x = mnist_dict["X_test"]
+                dataset_y = mnist_dict["y_test"]
+            elif cfg.dataset == "cifar10":
+                dataset_x = cifar_dict["X_test"]
+                dataset_y = cifar_dict["y_test"]
+            elif cfg.dataset == "svhn":
+                dataset_x = svhn_dict["X_test"]
+                dataset_y = svhn_dict["y_test"]
+            dataset_x = dataset_x.astype(np.float32) / 255.0
+            a = np.zeros((dataset_x.shape[0], 10))
+            a[np.arange(dataset_x.shape[0]), dataset_y] = 1
+            dataset_y = a
+            num_channels_x = dataset_x[0].shape[-1]
+            num_channels_y = None
+        target_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
+        out_dir = "./out/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
+        log_dir = "./logging/source_tasks/" + cfg.dataset "/" + str(cfg.z_dim) + "/"+ cfg.task+"/"
+        test_results_file = log_dir + args.task "_test.txt"
+
+        if not os.path.exists(target_checkpoint_dir):
+            os.makedirs(target_checkpoint_dir)
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        target_checkpoint_path = target_checkpoint_dir + "/" + cfg.task + "_" + str(cfg.z_dim) + '_model.ckpt'
+        if not (len(os.listdir(target_checkpoint_dir))):
+            ckpt = None
         else:
-            if args.task == "denoising":
-                dataset_x = np.load("./preprocess/denoising.npy")
-                dataset_y = np.load("./preprocess/autoencoding.npy")
-            else:
-                dataset_y = np.load("./preprocess/" + args.task + ".npy")
+            ckpt = tf.train.latest_checkpoint(target_checkpoint_dir)
+        # print (target_checkpoint_path)
+    else:
+        print ("source task is " + cfg.source_task)
+        print ("target task is " + cfg.target_task)
+        print("Removed dimensions: %s" % cfg.remove_dims)
+        if cfg.source_task == "autoencoding":
+            if cfg.dataset == "mnist":
+                dataset_x = mnist_dict["X_test"]
+                dataset_y = mnist_dict["y_test"]
+            elif cfg.dataset == "cifar10":
+                dataset_x = cifar_dict["X_test"]
+                dataset_y = cifar_dict["y_test"]
+            elif cfg.dataset == "svhn":
+                dataset_x = svhn_dict["X_test"]
+                dataset_y = svhn_dict["y_test"]
+            a = np.zeros((dataset_x.shape[0], 10))
+            dataset_x = dataset_x.astype(np.float32) / 255.0
+            a[np.arange(dataset_x.shape[0]), dataset_y] = 1
+            dataset_y = a
+            num_channels_x = dataset_x[0].shape[-1]
+            num_channels_y = None
+        elif cfg.source_task == "classification":
+            if cfg.dataset == "mnist":
+                dataset_x = mnist_dict["X_test"]
+            elif cfg.dataset == "cifar10":
+                dataset_x = cifar_dict["X_test"]
+            elif cfg.dataset == "svhn":
+                dataset_x = svhn_dict["X_test"]
+            dataset_x = dataset_x.astype(np.float32) / 255.0
+            dataset_y = dataset_x
+            num_channels_x = dataset_x[0].shape[-1]
+            num_channels_y = num_channels_x
 
-    dataset_x = dataset_x[int(0.8 * len(dataset_x)):]
-    dataset_y = dataset_y[int(0.8 * len(dataset_y)):]
-    dataset_x = dataset_x.astype(np.float32)
-    dataset_y = dataset_y.astype(np.float32)
-    min_x = np.min(dataset_x)
-    max_x = np.max(dataset_x)
-    min_y = np.min(dataset_y)
-    max_y = np.max(dataset_y)
-    dataset_x = (dataset_x - min_x) / (max_x - min_x)
-    dataset_y = (dataset_y - min_y) / (max_y - min_y)
-    imsize = dataset_y[0].shape[1]
-    num_channels_x = dataset_x[0].shape[-1]
-    num_channels_y = dataset_y[0].shape[-1]
-
-    if (args.transfer == True):
-        target_checkpoint_dir = "./checkpoints/transfers/" + str(
-            args.z_dim) + "/" + args.source_task + "->" + args.target_task + "/" + transfer_dims
-        source_checkpoint_dir = "./checkpoints/source_tasks/" + str(args.z_dim) + "/" + args.source_task
-        out_dir = "./out/transfers/" + str(args.z_dim) + "/" + args.source_task + "->" + args.target_task + str(
-            args.z_dim) + "_" + transfer_dims
-        target_checkpoint_path = target_checkpoint_dir + "/" + args.source_task + "->" + args.target_task + str(
-            args.z_dim) + "_" + transfer_dims + '.ckpt'
+        target_checkpoint_dir = "./checkpoints/transfers/" + cfg.dataset + "/" + str(
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims
+        source_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(
+            cfg.z_dim) + "/" + cfg.source_task
+        out_dir = "./out/transfers/" + cfg.dataset + "/" + str(
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + str(cfg.z_dim) + "_" + transfer_dims
+        target_checkpoint_path = target_checkpoint_dir + "/" + cfg.source_task + "->" + cfg.target_task + str(
+            cfg.z_dim) + "_" + transfer_dims + '.ckpt'
         ckpt = tf.train.get_checkpoint_state(source_checkpoint_dir)
+        log_dir = "./logging/transfers"+ cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims +"/"
+        test_results_file = log_dir +cfg.source_task + "->" + cfg.target_task+"_test.txt"
+
+
+    imsize = dataset_x[0].shape[1]
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    if not os.path.exists(target_checkpoint_dir):
+        os.makedirs(target_checkpoint_dir)
+    if not os.path.exists("./logging"):
+        os.makedirs("./logging")
+
+    #Freeze encoder while transfer
+    if(cfg.transfer):
+        isTrain_Enc = False
     else:
-        target_checkpoint_dir = "./checkpoints/source_tasks/" + str(args.z_dim) + "/" + args.task
-        out_dir = "./out/source_tasks/" + str(args.z_dim) + "/" + args.task
-        ckpt = None
-        target_checkpoint_path = target_checkpoint_dir + "/" + args.task + "_" + str(args.z_dim) + '_model.ckpt'
+        isTrain_Enc = True
 
-    if (args.transfer):
-        test_results_file = "logging/transfers/" + str(
-            args.z_dim) + "/" + args.source_task + "->" + args.target_task + "_transfer.txt"
-    else:
-        test_results_file = "logging/source_tasks/" + str(args.z_dim) + "/" + args.task
-
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    vae = ConvVAE(args=args, A=A.T, imsize=imsize, num_channels_x=num_channels_x, num_channels_y=num_channels_y)
+    vae = ConvVAE(args=cfg, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize,isTrain_Enc=isTrain_Enc)
 
     ckpt = tf.train.get_checkpoint_state(target_checkpoint_dir)
+
     if ckpt:
-        vae.load_model(target_checkpoint_dir, load_transfer=True)
-        print ("Loaded model")
+        vae.load_model(target_checkpoint_dir)
+        print ("Loaded Trained Model")
 
     avg_recon_cost = []
     avg_vae_cost = []
 
-    n_batches = int(dataset_y.shape[0] / args.batch_size)
+    n_batches = int(dataset_y.shape[0] / cfg.batch_size)
     print("Number of batches are %d" % n_batches)
     for i in range(n_batches):
-        x = dataset_x[i * args.batch_size:(i + 1) * args.batch_size]
-        y = dataset_y[i * args.batch_size:(i + 1) * args.batch_size]
+        x = dataset_x[i * cfg.batch_size:(i + 1) * cfg.batch_size]
+        y = dataset_y[i * cfg.batch_size:(i + 1) * cfg.batch_size]
         # n_samples = test_set.shape[0]
-        vae_cost, reconstr_loss, kl_div = vae.test_loss(x, y, eps[i])  # vae.partial_fit(x_batch,y_batch)
-        x_prime = vae.reconstruct(x_batch)
-        save_images(np.array(x_prime), image_manifold_size(len(x_prime)),
-                    out_dir + '/test_{}_recons.png'.format(str(i + 1)))
-        save_images(np.array(y), image_manifold_size(len(y)), out_dir + '/test_{}_actual.png'.format(str(i + 1)))
+        vae_cost, reconstr_loss, kl_div = vae.test_loss(x, y)  # vae.partial_fit(x_batch,y_batch)
+        avg_recon_cost.append(reconstr_loss)
+        avg_vae_cost.append(vae_cost)
 
-    avg_recon_cost.append(reconstr_loss)
-    avg_vae_cost.append(vae_cost)
-
-    if remove_dims != '':
-        print "removed dims: " + args.remove_dims
-    else:
-        print "full transfer"
-        print "average vae_cost:", "{:.6f}".format(np.mean(vae_cost)), \
-            "average reconstr_loss =", "{:.6f}".format(np.mean(reconstr_loss))
-
-    with open(test_results_file, "a") as text_file:
-        if args.transfer == True:
-            text_file.write("Removed dims :" + args.remove_dims + "\n")
-            text_file.write("source task :" + args.source_task + "\n")
-            text_file.write("target task :" + args.target_task + "\n")
+    #for saving test images
+    i = 0
+    x = dataset_x[i * cfg.batch_size:(i + 1) * cfg.batch_size]
+    y = dataset_y[i * cfg.batch_size:(i + 1) * cfg.batch_size]
+    recons = vae.reconstruct(x)
+    if num_channels_y:
+        if (cfg.batch_size >= 256):
+            save_images(y[0:256], image_manifold_size(256), log_dir + '/epoch_{}_actual.png'.format(str(epoch + 1)))
+            save_images(recons[0:256], image_manifold_size(256),
+                        log_dir +"/recons/"+ '/test.png')
         else:
-            text_file.write("task :" + args.task + "\n")
+            save_images(y, image_manifold_size(y.shape[0]), out_dir + '/epoch_{}_actual.png'.format(str(epoch + 1)))
+            save_images(recons, image_manifold_size(recons.shape[0]),
+                        log_dir + "/recons/" + '/test.png')
 
-        text_file.write("RECONS LOSS : " + str(np.mean(reconstr_loss)) + "\n")
-        text_file.write("vae cost : " + str(np.mean(vae_cost)) + "\n")
-        text_file.write("kl_div : " + str(np.mean(kl_div)) + "\n")
-        text_file.write("regularizer loss : " + str(np.mean(reg_loss)) + "\n")
-        text_file.write("---------------------------------" + "\n")
-        text_file.close()
+        with open(test_results_file,"a") as text_file:
+            if cfg.transfer:
+                text_file.write("source task :" + cfg.source_task + "\n")
+                text_file.write("target task :" + cfg.target_task + "\n")
+            else:
+                text_file.write("Task :" + cfg.task + "\n")
+
+            text_file.write("Average Reconstruction Error : " + str(np.mean(avg_recon_cost)) + "\n")
+            text_file.close()
+            if cfg.transfer == False:
+                print ("current task : " + cfg.task)
+            else:
+                print ("source task :" + cfg.source_task + " target task: " + cfg.target_task)
+            print("Average Reconstruction Error : " + str(np.mean(avg_recon_cost)) + "\n")
+    else:
+        with open(test_results_file, "a") as text_file:
+            # text_file.write("Removed dims :"+args.remove_dims+"\n")
+
+            if cfg.transfer:
+                text_file.write("source task :" + cfg.source_task + "\n")
+                text_file.write("target task :" + cfg.target_task + "\n")
+            else:
+                text_file.write("Task :" + cfg.task + "\n")
+
+            text_file.write("Test Accuracy : " + str(np.mean(avg_recon_cost)) + "\n")
+            text_file.close()
+            if cfg.transfer == False:
+                print ("current task : " + cfg.task)
+            else:
+                print ("source task :" + cfg.source_task + " target task: " + cfg.target_task)
+            print("Test Accuracy : " + str(np.mean(avg_recon_cost)) + "\n")
 
 
 def MI(args):
@@ -652,18 +706,6 @@ def edge_detection_kl(args):
             kl_file.write("2->1 kl loss: %f" % kl2)
             kl_file.write("################################################")
             kl_file.close()
-
-
-def kl_div(mu1, cov1, mu2, cov2):
-    trace_term = np.sum(cov1 / cov2, axis=1)
-    term1 = 0
-    term2 = 0
-    for i in range(cov2.shape[1]):
-        term1 += np.log(cov2[0][i] + 1e-8)
-        term2 += np.log(cov1[0][i] + 1e-8)
-    det_term = term1 - term2  # np.log(cov2)-np.log(np.prod(cov1,axis=1)+)
-    mean_term = np.sum(np.square(mu2 - mu1) / cov2, axis=1)
-    return np.mean(0.5 * (trace_term + det_term + mean_term))
 
 
 if __name__ == '__main__':

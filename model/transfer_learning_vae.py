@@ -341,8 +341,14 @@ class ConvVAE:
         eps = np.random.normal(size=(X.shape[0], self.z_selected_dim))
         vae_cost, vae_loss_reconstr, vae_loss_kl = self.sess.run([self.reconstr_loss, self.vae_cost, self.vae_loss_kl],
                                                                  feed_dict={self.x: X, self.y: Y, self.eps: eps})
-        return tf.reduce_mean(vae_cost).eval(), tf.reduce_mean(vae_loss_reconstr).eval(), tf.reduce_mean(
-            vae_loss_kl).eval()
+        if self.num_channels_y:
+            return vae_cost, tf.reduce_mean(vae_loss_reconstr).eval(), tf.reduce_mean(vae_loss_kl).eval()
+        else:
+            pred_indices = tf.argmax(self.y_pred, axis=1)
+            actual_indices = tf.argmax(Y, axis=1)
+            accuracy = self.sess.run(tf.reduce_mean(tf.cast(tf.equal(pred_indices, actual_indices), tf.float32)),
+                                     feed_dict={self.x: X, self.y: Y, self.eps: eps})
+            return vae_cost, accuracy, tf.reduce_mean(vae_loss_kl).eval()
 
     def theta(self, x, z, reuse=False):
         with tf.variable_scope("t_theta", reuse=reuse):
@@ -376,6 +382,5 @@ class ConvVAE:
                       {self.x: x, self.y: y, self.eps: np.random.normal(size=[self.batch_size, self.z_selected_dim])})
 
     def mi_value(self, x, y):
-        MI = self.sess.run(self.v_lb, {self.x: x, self.y: y,
-                                       self.eps: np.random.normal(size=[self.batch_size, self.z_selected_dim])})
+        MI = self.sess.run(self.v_lb, {self.x: x, self.y: y, self.eps: np.random.normal(size=[self.batch_size, self.z_selected_dim])})
         return -1 * MI
