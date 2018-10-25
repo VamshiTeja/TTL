@@ -33,7 +33,7 @@ def deconv2d(input_, output_shape, k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02, name
         return deconv
 
 
-class ConvVAE:
+class FactorVAE:
     def __init__(self, args, A, num_channels_x, num_channels_y, imsize, gamma=2.5, isTrain_Enc=True):
 
         self.args = args
@@ -337,8 +337,8 @@ class ConvVAE:
         '''saves the decoder of target task while transfer'''
         self.decoder_saver.save(self.sess,checkpoint_path)
 
-    def test_loss(self, X, Y):
-        eps = np.random.normal(size=(X.shape[0], self.z_selected_dim))
+    def test_loss(self, X, Y,eps):
+        #eps = np.random.normal(size=(X.shape[0], self.z_selected_dim))
         vae_cost, vae_loss_reconstr, vae_loss_kl = self.sess.run([self.reconstr_loss, self.vae_cost, self.vae_loss_kl],
                                                                  feed_dict={self.x: X, self.y: Y, self.eps: eps})
         if self.num_channels_y:

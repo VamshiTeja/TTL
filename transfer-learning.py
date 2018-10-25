@@ -9,7 +9,7 @@ import os
 import cPickle
 import pickle
 from tqdm import tqdm
-from model.transfer_learning_vae import ConvVAE
+from model.transfer_learning_vae import FactorVAE
 from utils.tools import *
 from utils.loader import *
 from config import cfg, cfg_from_file
@@ -188,8 +188,8 @@ def train(cfg):
     else:
         isTrain_Enc = True
 
-    vae = ConvVAE(args=cfg, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize,
-                      isTrain_Enc=isTrain_Enc)
+    vae = FactorVAE(args=cfg, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize,
+                    isTrain_Enc=isTrain_Enc)
 
     train_set = (dataset_x, dataset_y)
     n_samples = train_set[0].shape[0]
@@ -292,13 +292,16 @@ def train(cfg):
                 else:
                     print ("source task :" + cfg.source_task + " target task: " + cfg.target_task)
         print (target_checkpoint_path)
-        vae.save_model(target_checkpoint_path, epoch)
-        print ("model saved")
-        # break
+    vae.save_model(target_checkpoint_path, num_epochs)
+    print ("model saved")
+    # break
     # return vae
 
 
 def test(cfg):
+
+    #load eps
+    eps = np.load("./datasets/eps_10.npy")
 
     z_dim = cfg.z_dim  # number of latent variables.
 
@@ -425,7 +428,7 @@ def test(cfg):
     else:
         isTrain_Enc = True
 
-    vae = ConvVAE(args=cfg, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize,isTrain_Enc=isTrain_Enc)
+    vae = FactorVAE(args=cfg, A=A.T, num_channels_x=num_channels_x, num_channels_y=num_channels_y, imsize=imsize, isTrain_Enc=isTrain_Enc)
 
     ckpt = tf.train.get_checkpoint_state(target_checkpoint_dir)
 
@@ -433,18 +436,23 @@ def test(cfg):
         vae.load_model(target_checkpoint_dir)
         print ("Loaded Trained Model")
 
+    recons_cost_per_run = []
+    vae_cost_per_run = []
     avg_recon_cost = []
     avg_vae_cost = []
 
-    n_batches = int(dataset_y.shape[0] / cfg.batch_size)
+    n_batches = int(dataset_y.shape[0] / cfg.batch_size_test)
     print("Number of Test batches are %d" % n_batches)
-    for i in tqdm(range(n_batches)):
-        x = dataset_x[i * cfg.batch_size:(i + 1) * cfg.batch_size]
-        y = dataset_y[i * cfg.batch_size:(i + 1) * cfg.batch_size]
-        # n_samples = test_set.shape[0]
-        vae_cost, reconstr_loss, kl_div = vae.test_loss(x, y)  # vae.partial_fit(x_batch,y_batch)
-        avg_recon_cost.append(reconstr_loss)
-        avg_vae_cost.append(vae_cost)
+    for run in tqdm(range(cfg.num_test_runs)):
+        for i in range(n_batches):
+            x = dataset_x[i * cfg.batch_size:(i + 1) * cfg.batch_size]
+            y = dataset_y[i * cfg.batch_size:(i + 1) * cfg.batch_size]
+            # n_samples = test_set.shape[0]
+            vae_cost, reconstr_loss, kl_div = vae.test_loss(x, y,eps[i])  # vae.partial_fit(x_batch,y_batch)
+            avg_recon_cost.append(reconstr_loss)
+            avg_vae_cost.append(vae_cost)
+        recons_cost_per_run.append(np.mean(avg_recon_cost))
+        vae_cost_per_run.append(np.mean(avg_vae_cost))
 
     #for saving test images
     i = 0
@@ -468,7 +476,7 @@ def test(cfg):
             else:
                 text_file.write("Task :" + cfg.task + "\n")
 
-            text_file.write("Average Reconstruction Error : " + str(np.mean(avg_recon_cost)) + "\n")
+            text_file.write("Average Reconstruction Error : " + str(np.mean(recons_cost_per_run)) + "\n")
             text_file.close()
             if cfg.transfer == False:
                 print ("current task : " + cfg.task)
@@ -476,8 +484,8 @@ def test(cfg):
                 if(cfg.remove_dims==''):
                     print("Transfer Full Latent")
                 else:
-                    print ("Source task :" + cfg.source_task + " Target task: " + cfg.target_task+" Remove dimensions: "+cfg.remove_dims)
-            print("Average Reconstruction Error : " + str(np.mean(avg_recon_cost)) + "\n")
+                    print ("Source task :" + cfg.source_task + " Target task: " + cfg.target_task+" Remove dimensions: "+cfg.remove_dims+"\n")
+            print("Average Reconstruction Error : " + str(np.mean(recons_cost_per_run)) + "\n")
     else:
         with open(test_results_file, "a") as text_file:
             # text_file.write("Removed dims :"+args.remove_dims+"\n")
@@ -490,7 +498,7 @@ def test(cfg):
             else:
                 text_file.write("Task :" + cfg.task + "\n")
 
-            text_file.write("Test Accuracy : " + str(np.mean(avg_recon_cost)) + "\n")
+            text_file.write("Test Accuracy : " + str(np.mean(recons_cost_per_run)) + "\n")
             text_file.close()
             if cfg.transfer == False:
                 print ("current task : " + cfg.task)
@@ -498,8 +506,8 @@ def test(cfg):
                 if (cfg.remove_dims == ''):
                     print("Transfer Full Latent")
                 else:
-                    print ("Source   task :" + cfg.source_task + " Target task: " + cfg.target_task + " Remove dimensions: " + cfg.remove_dims)
-            print("Test Accuracy : " + str(np.mean(avg_recon_cost)) + "\n")
+                    print ("Source   task :" + cfg.source_task + " Target task: " + cfg.target_task + " Remove dimensions: " + cfg.remove_dims+"\n")
+            print("Test Accuracy : " + str(np.mean(recons_cost_per_run)) + "\n")
 
 
 def MI(args):
@@ -592,7 +600,7 @@ def MI(args):
     if not os.path.exists(mi_checkpoint_dir):
         os.makedirs(mi_checkpoint_dir)
 
-    vae = ConvVAE(args=args, A=A.T, imsize=imsize, num_channels_x=num_channels_x, num_channels_y=num_channels_y)
+    vae = FactorVAE(args=args, A=A.T, imsize=imsize, num_channels_x=num_channels_x, num_channels_y=num_channels_y)
 
     ckpt = tf.train.get_checkpoint_state(source_checkpoint_dir)
     if ckpt:
@@ -668,7 +676,7 @@ def edge_detection_kl(args):
             Y1 = np.reshape(Y1, [-1, Y1.shape[1], Y1.shape[2], 1])
         else:
             num_channels = Y1.shape[3]
-        vae = ConvVAE(args=args, num_channels=num_channels)
+        vae = FactorVAE(args=args, num_channels=num_channels)
         if comb[1] == "denoising":
             X2 = np.load("/DATA1/taskonomy-resized/noisy_rgb.npy").astype(np.float32)
             Y2 = np.load("/DATA1/taskonomy-resized/rgb.npy").astype(np.float32)
