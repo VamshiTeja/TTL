@@ -8,6 +8,7 @@ import time
 import os
 import cPickle
 import pickle
+from tqdm import tqdm
 from model.transfer_learning_vae import ConvVAE
 from utils.tools import *
 from utils.loader import *
@@ -27,7 +28,7 @@ def sample_minibatch(dataset, batch_size=256):
 
 
 def main():
-    # parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     # parser.add_argument('--num_epochs', type=int, default=30, help='training epochs')
     # parser.add_argument('--display_step', type=int, default=20, help='display step')
     # parser.add_argument('--checkpoint_step', type=int, default=5, help='checkpoint step')
@@ -351,8 +352,8 @@ def test(cfg):
             num_channels_y = None
         target_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
         out_dir = "./out/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
-        log_dir = "./logging/source_tasks/" + cfg.dataset "/" + str(cfg.z_dim) + "/"+ cfg.task+"/"
-        test_results_file = log_dir + args.task "_test.txt"
+        log_dir = "./logging/source_tasks/" + cfg.dataset +"/" + str(cfg.z_dim) + "/"+ cfg.task+"/"
+        test_results_file = log_dir + cfg.task +"_test.txt"
 
         if not os.path.exists(target_checkpoint_dir):
             os.makedirs(target_checkpoint_dir)
@@ -367,7 +368,8 @@ def test(cfg):
     else:
         print ("source task is " + cfg.source_task)
         print ("target task is " + cfg.target_task)
-        print("Removed dimensions: %s" % cfg.remove_dims)
+        if(cfg.remove_dims!=""):
+            print("Removed dimensions: %s" % cfg.remove_dims)
         if cfg.source_task == "autoencoding":
             if cfg.dataset == "mnist":
                 dataset_x = mnist_dict["X_test"]
@@ -405,7 +407,7 @@ def test(cfg):
         target_checkpoint_path = target_checkpoint_dir + "/" + cfg.source_task + "->" + cfg.target_task + str(
             cfg.z_dim) + "_" + transfer_dims + '.ckpt'
         ckpt = tf.train.get_checkpoint_state(source_checkpoint_dir)
-        log_dir = "./logging/transfers"+ cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims +"/"
+        log_dir = "./logging/transfers/"+ cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims +"/"
         test_results_file = log_dir +cfg.source_task + "->" + cfg.target_task+"_test.txt"
 
 
@@ -435,8 +437,8 @@ def test(cfg):
     avg_vae_cost = []
 
     n_batches = int(dataset_y.shape[0] / cfg.batch_size)
-    print("Number of batches are %d" % n_batches)
-    for i in range(n_batches):
+    print("Number of Test batches are %d" % n_batches)
+    for i in tqdm(range(n_batches)):
         x = dataset_x[i * cfg.batch_size:(i + 1) * cfg.batch_size]
         y = dataset_y[i * cfg.batch_size:(i + 1) * cfg.batch_size]
         # n_samples = test_set.shape[0]
@@ -471,7 +473,10 @@ def test(cfg):
             if cfg.transfer == False:
                 print ("current task : " + cfg.task)
             else:
-                print ("source task :" + cfg.source_task + " target task: " + cfg.target_task)
+                if(cfg.remove_dims==''):
+                    print("Transfer Full Latent")
+                else:
+                    print ("Source task :" + cfg.source_task + " Target task: " + cfg.target_task+" Remove dimensions: "+cfg.remove_dims)
             print("Average Reconstruction Error : " + str(np.mean(avg_recon_cost)) + "\n")
     else:
         with open(test_results_file, "a") as text_file:
@@ -480,6 +485,8 @@ def test(cfg):
             if cfg.transfer:
                 text_file.write("source task :" + cfg.source_task + "\n")
                 text_file.write("target task :" + cfg.target_task + "\n")
+                if(cfg.remove_dims!=""):
+                    text_file.write("Remove dimensions: "+cfg.remove_dims)
             else:
                 text_file.write("Task :" + cfg.task + "\n")
 
@@ -488,7 +495,10 @@ def test(cfg):
             if cfg.transfer == False:
                 print ("current task : " + cfg.task)
             else:
-                print ("source task :" + cfg.source_task + " target task: " + cfg.target_task)
+                if (cfg.remove_dims == ''):
+                    print("Transfer Full Latent")
+                else:
+                    print ("Source   task :" + cfg.source_task + " Target task: " + cfg.target_task + " Remove dimensions: " + cfg.remove_dims)
             print("Test Accuracy : " + str(np.mean(avg_recon_cost)) + "\n")
 
 
