@@ -65,7 +65,7 @@ print(X_train.shape, X_test.shape, X_val.shape)
 
 
 #svhn dataset
-svhn      = np.concatenate((scipy.io.loadmat('./datasets/svhn_data/train_32x32.mat')['X'],scipy.io.loadmat('./datasets/svhn_data/test_32x32.mat')['X']),axis=3)
+svhn = np.concatenate((scipy.io.loadmat('./datasets/svhn_data/train_32x32.mat')['X'],scipy.io.loadmat('./datasets/svhn_data/test_32x32.mat')['X']),axis=3)
 X = svhn.transpose((3,0,1,2))
 y = np.concatenate((scipy.io.loadmat('./datasets/svhn_data/train_32x32.mat')['y'],scipy.io.loadmat('./datasets/svhn_data/test_32x32.mat')['y']),axis=0)-1
 X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=42, stratify=y)
@@ -83,3 +83,17 @@ print(X_train.shape, X_test.shape, X_val.shape)
 # print "val"
 # for i in range(10):
 # 	print(float((y_val==i).sum())/X_val.shape[0])
+
+
+#create svhn with original train-test splits
+X_train = scipy.io.loadmat('./datasets/svhn_data/train_32x32.mat')['X']
+X_train = X_train.transpose((3,0,1,2))
+y_train = scipy.io.loadmat('./datasets/svhn_data/train_32x32.mat')['y']-1
+
+X_test = scipy.io.loadmat('./datasets/svhn_data/test_32x32.mat')['X']
+X_test = X_test.transpose((3,0,1,2))
+y_test = scipy.io.loadmat('./datasets/svhn_data/test_32x32.mat')['y']-1
+svhn_dict_orig = {"X_train": X_train, "y_train":y_train, "X_test":X_test, "y_test":y_test}
+with open("./datasets/svhn_original.pickle","wb") as f:
+	pickle.dump(svhn_dict_orig, f)
+print(X_train.shape, X_test.shape)

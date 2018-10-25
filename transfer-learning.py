@@ -20,6 +20,8 @@ cifar10 = open("./datasets/cifar.pickle", "rb")
 cifar_dict = pickle.load(cifar10)
 svhn = open("./datasets/svhn.pickle", "rb")
 svhn_dict = pickle.load(svhn)
+svhn_orig = open("./datasets/svhn_original.pickle", "rb")
+svhn_orig_dict = pickle.load(svhn_orig)
 
 
 def sample_minibatch(dataset, batch_size=256):
@@ -113,6 +115,10 @@ def train(cfg):
             elif cfg.dataset == "svhn":
                 dataset_x = svhn_dict["X_train"]
                 dataset_y = svhn_dict["y_train"]
+            elif cfg.dataset == "svhn_orig":
+                dataset_x = svhn_orig_dict["X_train"]
+                dataset_y = svhn_orig_dict["y_train"]
+
             dataset_x = dataset_x.astype(np.float32) / 255.0
             a = np.zeros((dataset_x.shape[0], 10))
             a[np.arange(dataset_x.shape[0]), dataset_y] = 1
@@ -175,10 +181,11 @@ def train(cfg):
             cfg.z_dim) + "/" + cfg.target_task + "_decoder"
         target_decoder_checkpoint_path = target_decoder_checkpoint_dir + "/" + cfg.target_task + "_decoder_" + str(cfg.z_dim) + '.ckpt'
         target_decoder_ckpt = tf.train.get_checkpoint_state(target_decoder_checkpoint_dir)
+        if not os.path.exists(target_decoder_checkpoint_dir):
+            os.makedirs(target_decoder_checkpoint_dir)
 
     imsize = dataset_x[0].shape[1]
-    if not os.path.exists(target_decoder_checkpoint_dir):
-        os.makedirs(target_decoder_checkpoint_dir)
+
     if not os.path.exists(target_checkpoint_dir):
         os.makedirs(target_checkpoint_dir)
 
@@ -331,7 +338,7 @@ def test(cfg):
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_test"]
             elif cfg.dataset == "svhn":
-                dataset_x = svhn_dict["X_test"]
+                dataset_x = svhn_dict["X_test"][0:19456]
 
             dataset_x = dataset_x.astype(np.float32) / 255.0
             dataset_y = dataset_x
@@ -345,8 +352,12 @@ def test(cfg):
                 dataset_x = cifar_dict["X_test"]
                 dataset_y = cifar_dict["y_test"]
             elif cfg.dataset == "svhn":
-                dataset_x = svhn_dict["X_test"]
-                dataset_y = svhn_dict["y_test"]
+                dataset_x = svhn_dict["X_test"][0:19456]
+                dataset_y = svhn_dict["y_test"][0:19456]
+            elif cfg.dataset == "svhn_orig":
+                dataset_x = svhn_orig_dict["X_train"]
+                dataset_y = svhn_orig_dict["y_train"]
+
             dataset_x = dataset_x.astype(np.float32) / 255.0
             a = np.zeros((dataset_x.shape[0], 10))
             a[np.arange(dataset_x.shape[0]), dataset_y] = 1
@@ -381,8 +392,8 @@ def test(cfg):
                 dataset_x = cifar_dict["X_test"]
                 dataset_y = cifar_dict["y_test"]
             elif cfg.dataset == "svhn":
-                dataset_x = svhn_dict["X_test"]
-                dataset_y = svhn_dict["y_test"]
+                dataset_x = svhn_dict["X_test"][0:19456]
+                dataset_y = svhn_dict["y_test"][0:19456]
             a = np.zeros((dataset_x.shape[0], 10))
             dataset_x = dataset_x.astype(np.float32) / 255.0
             a[np.arange(dataset_x.shape[0]), dataset_y] = 1
@@ -395,7 +406,7 @@ def test(cfg):
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_test"]
             elif cfg.dataset == "svhn":
-                dataset_x = svhn_dict["X_test"]
+                dataset_x = svhn_dict["X_test"][0:19456]
             dataset_x = dataset_x.astype(np.float32) / 255.0
             dataset_y = dataset_x
             num_channels_x = dataset_x[0].shape[-1]
@@ -445,8 +456,8 @@ def test(cfg):
     print("Number of Test batches are %d" % n_batches)
     for run in tqdm(range(cfg.num_test_runs)):
         for i in range(n_batches):
-            x = dataset_x[i * cfg.batch_size:(i + 1) * cfg.batch_size]
-            y = dataset_y[i * cfg.batch_size:(i + 1) * cfg.batch_size]
+            x = dataset_x[i * cfg.batch_size_test:(i + 1) * cfg.batch_size_test]
+            y = dataset_y[i * cfg.batch_size_test:(i + 1) * cfg.batch_size_test]
             # n_samples = test_set.shape[0]
             vae_cost, reconstr_loss, kl_div = vae.test_loss(x, y,eps[i])  # vae.partial_fit(x_batch,y_batch)
             avg_recon_cost.append(reconstr_loss)
@@ -506,7 +517,7 @@ def test(cfg):
                 if (cfg.remove_dims == ''):
                     print("Transfer Full Latent")
                 else:
-                    print ("Source   task :" + cfg.source_task + " Target task: " + cfg.target_task + " Remove dimensions: " + cfg.remove_dims+"\n")
+                    print ("Source task :" + cfg.source_task + " Target task: " + cfg.target_task + " Remove dimensions: " + cfg.remove_dims+"\n")
             print("Test Accuracy : " + str(np.mean(recons_cost_per_run)) + "\n")
 
 
