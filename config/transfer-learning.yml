@@ -1,0 +1,35 @@
+# General Configutaions
+run_label: 'transfer-learning'
+gpu: '0'
+#seed: 0                            # '0' means no manual seeding
+
+# Transfer Learning Configurations
+
+# Dataset Configurations
+dataset: 'svhn_orig'
+
+# Training Configurations
+mode:  "test"
+batch_size: 256
+batch_size_test: 1024
+num_epochs: 40
+learning_rate: 0.0002
+gamma: 3.5
+
+#display and saving config
+display_step: 20
+checkpoint_step: 5
+
+z_dim:  10
+#for source tasks
+task: "classification"
+restore: 0
+
+#for transfer
+transfer: False
+source_task:  "autoencoding"
+target_task:  "classification"
+remove_dims: ''
+
+#test config
+num_test_runs: 1
