@@ -34,7 +34,7 @@ def deconv2d(input_, output_shape, k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02, name
 
 
 class FactorVAE:
-    def __init__(self, args, A, num_channels_x, num_channels_y, imsize, gamma=2.5, isTrain_Enc=True):
+    def __init__(self, args, A, num_channels_x, num_channels_y, imsize, isTrain_Enc=True):
 
         self.args = args
         self.d_reuse = False
@@ -45,7 +45,7 @@ class FactorVAE:
         self.batch_size = self.args.batch_size
         self.z_dim = self.args.z_dim
         self.z_selected_dim = A.shape[1]
-        self.gamma = gamma
+        self.gamma = args.gamma
         self.x_dim = imsize
         self.y_dim = imsize
         self.imsize = imsize
@@ -215,7 +215,7 @@ class FactorVAE:
         if (self.args.transfer):
             self.vae_cost = tf.add(self.reconstr_loss, 0.0)
         else:
-            self.vae_cost = tf.add(self.reconstr_loss + self.vae_loss_kl, self.tc_regulariser)  # average over batch
+            self.vae_cost = tf.add(self.reconstr_loss + self.vae_loss_kl, self.tc_regulariser)
 
         self.disc_cost = -tf.add(0.5 * tf.reduce_mean(tf.log(probs_real[:, 0])),
                                  0.5 * tf.reduce_mean(tf.log(probs_permuted[:, 1])), name="disc_loss")
@@ -254,9 +254,11 @@ class FactorVAE:
         opt, vae_cost, vae_loss_reconstr, vae_loss_kl = self.sess.run(
             (self.vae_optimizer, self.vae_cost, self.reconstr_loss, self.vae_loss_kl),
             feed_dict={self.x: X, self.y: Y, self.eps: eps})
-        opt, disc_cost = self.sess.run((self.disc_optimizer, self.disc_cost),
-                                       feed_dict={self.x: X, self.y: Y, self.eps: eps})
-        # print (self.vae_cost.get_shape(),"vae cost shape ------------------------")
+        if(self.args.gamma==0):
+            disc_cost = 0
+        else:
+            opt, disc_cost = self.sess.run((self.disc_optimizer, self.disc_cost),
+                                           feed_dict={self.x: X, self.y: Y, self.eps: eps})
         if self.num_channels_y:
             return vae_cost, tf.reduce_mean(vae_loss_reconstr).eval(), tf.reduce_mean(vae_loss_kl).eval(), disc_cost
         else:

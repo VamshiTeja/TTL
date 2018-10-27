@@ -23,7 +23,6 @@ svhn_dict = pickle.load(svhn)
 svhn_orig = open("./datasets/svhn_original.pickle", "rb")
 svhn_orig_dict = pickle.load(svhn_orig)
 
-
 def sample_minibatch(dataset, batch_size=256):
     indices = np.random.choice(range(len(dataset)), batch_size, replace=False)
     return indices
@@ -125,8 +124,8 @@ def train(cfg):
             dataset_y = a
             num_channels_x = dataset_x[0].shape[-1]
             num_channels_y = None
-        target_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
-        out_dir = "./out/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
+        target_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task +"/gamma_"+str(cfg.gamma)
+        out_dir = "./out/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task+"/gamma_"+str(cfg.gamma)
         if not os.path.exists(target_checkpoint_dir):
             os.makedirs(target_checkpoint_dir)
         if not os.path.exists(out_dir):
@@ -169,11 +168,11 @@ def train(cfg):
             num_channels_x = dataset_x[0].shape[-1]
             num_channels_y = num_channels_x
         target_checkpoint_dir = "./checkpoints/transfers/" + cfg.dataset + "/" + str(
-            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task +"/gamma_"+str(cfg.gamma)+ "/" + transfer_dims
         source_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(
-            cfg.z_dim) + "/" + cfg.source_task
+            cfg.z_dim) + "/" + cfg.source_task+"/gamma_"+str(cfg.gamma)
         out_dir = "./out/transfers/" + cfg.dataset + "/" + str(
-            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + str(cfg.z_dim) + "_" + transfer_dims
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task +"/gamma_"+str(cfg.gamma)+"/" + transfer_dims
         target_checkpoint_path = target_checkpoint_dir + "/" + cfg.source_task + "->" + cfg.target_task + str(
             cfg.z_dim) + "_" + transfer_dims + '.ckpt'
         ckpt = tf.train.get_checkpoint_state(source_checkpoint_dir)
@@ -308,7 +307,7 @@ def train(cfg):
 def test(cfg):
 
     #load eps
-    eps = np.load("./datasets/eps_10.npy")
+    eps = np.load("./datasets/eps_svhn_10.npy")
 
     z_dim = cfg.z_dim  # number of latent variables.
 
@@ -331,7 +330,7 @@ def test(cfg):
 
     if cfg.transfer == False:
         print ("No tranfer")
-        print ("Currently Training the task : " + cfg.task)
+        print ("Currently Testing the task : " + cfg.task)
         if cfg.task == "Autoencoding":
             if cfg.dataset == "mnist":
                 dataset_x = mnist_dict["X_test"]
@@ -355,8 +354,8 @@ def test(cfg):
                 dataset_x = svhn_dict["X_test"][0:19456]
                 dataset_y = svhn_dict["y_test"][0:19456]
             elif cfg.dataset == "svhn_orig":
-                dataset_x = svhn_orig_dict["X_train"]
-                dataset_y = svhn_orig_dict["y_train"]
+                dataset_x = svhn_orig_dict["X_test"]
+                dataset_y = svhn_orig_dict["y_test"]
 
             dataset_x = dataset_x.astype(np.float32) / 255.0
             a = np.zeros((dataset_x.shape[0], 10))
@@ -364,9 +363,9 @@ def test(cfg):
             dataset_y = a
             num_channels_x = dataset_x[0].shape[-1]
             num_channels_y = None
-        target_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
-        out_dir = "./out/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task
-        log_dir = "./logging/source_tasks/" + cfg.dataset +"/" + str(cfg.z_dim) + "/"+ cfg.task+"/"
+        target_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task +"/gamma_"+str(cfg.gamma)
+        out_dir = "./out/source_tasks/" + cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.task+"/gamma_"+str(cfg.gamma)
+        log_dir = "./logging/source_tasks/" + cfg.dataset +"/" + str(cfg.z_dim) + "/"+ cfg.task+"/gamma_"+str(cfg.gamma)
         test_results_file = log_dir + cfg.task +"_test.txt"
 
         if not os.path.exists(target_checkpoint_dir):
@@ -413,11 +412,11 @@ def test(cfg):
             num_channels_y = num_channels_x
 
         target_checkpoint_dir = "./checkpoints/transfers/" + cfg.dataset + "/" + str(
-            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task +"/gamma_"+str(cfg.gamma)+ "/" + transfer_dims
         source_checkpoint_dir = "./checkpoints/source_tasks/" + cfg.dataset + "/" + str(
-            cfg.z_dim) + "/" + cfg.source_task
+            cfg.z_dim) + "/" + cfg.source_task+"/gamma_"+str(cfg.gamma)
         out_dir = "./out/transfers/" + cfg.dataset + "/" + str(
-            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + str(cfg.z_dim) + "_" + transfer_dims
+            cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task +"/gamma_"+str(cfg.gamma)+"/" + transfer_dims
         target_checkpoint_path = target_checkpoint_dir + "/" + cfg.source_task + "->" + cfg.target_task + str(
             cfg.z_dim) + "_" + transfer_dims + '.ckpt'
         ckpt = tf.train.get_checkpoint_state(source_checkpoint_dir)
