@@ -65,13 +65,11 @@ def main():
 
 
 def train(cfg):
-    learning_rate = cfg.learning_rate
     batch_size = cfg.batch_size
     num_epochs = cfg.num_epochs
-    display_step = cfg.display_step
-    checkpoint_step = cfg.checkpoint_step  # save training results every check point step
     z_dim = cfg.z_dim  # number of latent variables.
 
+    print "Hello"
     # set the selector matrix
     A = np.zeros(shape=(z_dim, z_dim)).astype(np.float32)
     count = 0
@@ -94,7 +92,7 @@ def train(cfg):
         print ("currently training the task : " + cfg.task)
         if cfg.task == "autoencoding":
             if cfg.dataset == "mnist":
-                dataset_x = mnist_dict["X_train"]
+                dataset_x = mnist_dict["X_train"].reshape([-1,28,28,1])
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_train"]
             elif cfg.dataset == "svhn":
@@ -106,7 +104,7 @@ def train(cfg):
             num_channels_y = num_channels_x
         elif cfg.task == "classification":
             if cfg.dataset == "mnist":
-                dataset_x = mnist_dict["X_train"]
+                dataset_x = mnist_dict["X_train"].reshape([-1,28,28,1])
                 dataset_y = mnist_dict["y_train"]
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_train"]
@@ -142,7 +140,7 @@ def train(cfg):
         print("Removed dimensions: %s" % cfg.remove_dims)
         if cfg.source_task == "autoencoding":
             if cfg.dataset == "mnist":
-                dataset_x = mnist_dict["X_val"]
+                dataset_x = mnist_dict["X_val"].reshape([-1,28,28,1])
                 dataset_y = mnist_dict["y_val"]
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_val"]
@@ -158,7 +156,7 @@ def train(cfg):
             num_channels_y = None
         elif cfg.source_task == "classification":
             if cfg.dataset == "mnist":
-                dataset_x = mnist_dict["X_val"]
+                dataset_x = mnist_dict["X_val"].reshape([-1,28,28,1])
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_val"]
             elif cfg.dataset == "svhn":
@@ -206,6 +204,8 @@ def train(cfg):
         restore = True
         if ckpt:
             vae.load_model(source_checkpoint_dir, load_transfer=True)
+            if tf.train.get_checkpoint_state(target_checkpoint_dir):
+                vae.load_transfer(target_checkpoint_dir,load_transfer=False)
         #loads target task static decoder for uniform experimentation
         if target_decoder_ckpt:
             vae.load_decoder(target_decoder_checkpoint_dir)
@@ -307,7 +307,14 @@ def train(cfg):
 def test(cfg):
 
     #load eps
-    eps = np.load("./datasets/eps_svhn_10.npy")
+    if(cfg.dataset=="svhn"):
+        eps = np.load("./datasets/eps_10.npy")
+    elif(cfg.dataset=="svhn_orig"):
+        eps = np.load("./datasets/eps_svhn_10.npy")
+    elif(cfg.dataset=="mnist"):
+        eps = np.load("./datasets/mnist.npy")
+    elif(cfg.dataset=="cifar10"):
+        eps = np.load("./datasets/cifar10.npy")
 
     z_dim = cfg.z_dim  # number of latent variables.
 
@@ -345,7 +352,7 @@ def test(cfg):
             num_channels_y = num_channels_x
         elif cfg.task == "classification":
             if cfg.dataset == "mnist":
-                dataset_x = mnist_dict["X_test"]
+                dataset_x = mnist_dict["X_test"].reshape([-1,28,28,1])
                 dataset_y = mnist_dict["y_test"]
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_test"]
@@ -385,7 +392,7 @@ def test(cfg):
             print("Removed dimensions: %s" % cfg.remove_dims)
         if cfg.source_task == "autoencoding":
             if cfg.dataset == "mnist":
-                dataset_x = mnist_dict["X_test"]
+                dataset_x = mnist_dict["X_test"].reshape([-1,28,28,1])
                 dataset_y = mnist_dict["y_test"]
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_test"]
@@ -401,7 +408,7 @@ def test(cfg):
             num_channels_y = None
         elif cfg.source_task == "classification":
             if cfg.dataset == "mnist":
-                dataset_x = mnist_dict["X_test"]
+                dataset_x = mnist_dict["X_test"].reshape([-1,28,28,1])
             elif cfg.dataset == "cifar10":
                 dataset_x = cifar_dict["X_test"]
             elif cfg.dataset == "svhn":
@@ -420,7 +427,7 @@ def test(cfg):
         target_checkpoint_path = target_checkpoint_dir + "/" + cfg.source_task + "->" + cfg.target_task + str(
             cfg.z_dim) + "_" + transfer_dims + '.ckpt'
         ckpt = tf.train.get_checkpoint_state(source_checkpoint_dir)
-        log_dir = "./logging/transfers/"+ cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task + "/" + transfer_dims +"/"
+        log_dir = "./logging/transfers/"+ cfg.dataset + "/" + str(cfg.z_dim) + "/" + cfg.source_task + "->" + cfg.target_task +"/gamma_"+str(cfg.gamma)+ "/" + transfer_dims +"/"
         test_results_file = log_dir +cfg.source_task + "->" + cfg.target_task+"_test.txt"
 
 
@@ -453,8 +460,8 @@ def test(cfg):
 
     n_batches = int(dataset_y.shape[0] / cfg.batch_size_test)
     print("Number of Test batches are %d" % n_batches)
-    for run in tqdm(range(cfg.num_test_runs)):
-        for i in range(n_batches):
+    for run in range(cfg.num_test_runs):
+        for i in tqdm(range(n_batches)):
             x = dataset_x[i * cfg.batch_size_test:(i + 1) * cfg.batch_size_test]
             y = dataset_y[i * cfg.batch_size_test:(i + 1) * cfg.batch_size_test]
             # n_samples = test_set.shape[0]
